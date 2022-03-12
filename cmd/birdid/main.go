@@ -130,96 +130,9 @@ func main() {
 		})
 	}
 
-	likes := []connection{}
-	for candidateOne, candidateTwo := range map[string]string{*candidateOne: *candidateTwo, *candidateTwo: *candidateOne} {
-		maxID := int64(math.MaxInt64 - 1)
-		sinceID := int64(0)
-		curr := 0
-
-		var earliestCandidate twitter.Tweet
-
-		for maxID > sinceID {
-			if curr >= *limit {
-				break
-			}
-
-			results, _, err := client.Favorites.List(&twitter.FavoriteListParams{
-				ScreenName: candidateOne,
-				SinceID:    sinceID,
-				MaxID:      maxID,
-			})
-			if err != nil {
-				panic(err)
-			}
-
-			curr += len(results)
-
-			newMaxID := maxID
-			for _, tweet := range results {
-				if tweet.ID < newMaxID {
-					newMaxID = tweet.ID
-				}
-
-				if *verbose {
-					log.Println("Evaluating like candidate for connection", candidateOne, "to", candidateTwo+":", tweet.ID, tweet.CreatedAt, tweet.Text)
-				}
-
-				if earliestCandidate.ID == 0 || earliestCandidate.ID > tweet.ID {
-					if tweet.User != nil && tweet.User.ScreenName == candidateTwo {
-						earliestCandidate = tweet
-
-						continue
-					}
-
-					if tweet.InReplyToScreenName == candidateTwo {
-						earliestCandidate = tweet
-
-						continue
-					}
-
-					if tweet.RetweetedStatus != nil && tweet.RetweetedStatus.InReplyToScreenName == candidateTwo {
-						earliestCandidate = tweet
-
-						continue
-					}
-
-					if strings.Contains(tweet.Text, candidateTwo) {
-						earliestCandidate = tweet
-
-						continue
-					}
-				}
-			}
-
-			if newMaxID == maxID {
-				break
-			}
-
-			maxID = newMaxID
-		}
-
-		likes = append(likes, connection{
-			from:  candidateOne,
-			to:    candidateTwo,
-			tweet: earliestCandidate,
-		})
-	}
-
 	for _, tweet := range tweets {
 		fmt.Printf(
 			"Earliest tweet from %v to %v: ID %v at %v with URL %v and text %v\n",
-			tweet.from,
-			tweet.to,
-			tweet.tweet.ID,
-			tweet.tweet.CreatedAt,
-			"https://twitter.com/"+path.Join(tweet.from, "status", tweet.tweet.IDStr),
-			tweet.tweet.Text,
-		)
-	}
-
-	for _, tweet := range likes {
-		fmt.Printf(
-			"Earliest like from %v to %v: ID %v at %v with URL %v and text %v\n",
 			tweet.from,
 			tweet.to,
 			tweet.tweet.ID,
